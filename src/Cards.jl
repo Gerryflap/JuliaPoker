@@ -26,7 +26,7 @@ module Cards
     Base.isless(a, b::NumberedRank) = Integer(a) < b.value
 
     # List all possible ranks
-    possible_ranks = [[NumberedRank(i) for i in 1:10]; [jack, queen, king, ace]]
+    possible_ranks = [[NumberedRank(i) for i in 2:10]; [jack, queen, king, ace]]
 
     # Card suits
     @enum Suit hearts=1 diamonds=2 clubs=3 spades=4
@@ -36,6 +36,9 @@ module Cards
     struct Card
         suit::Suit
         rank::Rank
+        hidden::Bool
+        Card(s, r) = new(s, r, false)
+        Card(s, r, h) = new(s, r, h)
     end
 
     # Card ordering
@@ -75,6 +78,10 @@ module Cards
         end
     end
 
-    pretty_card(card::Card) = pretty_suit(card.suit) * pretty_rank(card.rank)
-
+    function pretty_card(card::Card)
+        if card.hidden
+            return "??"
+        end
+        return pretty_suit(card.suit) * pretty_rank(card.rank)
+    end
 end

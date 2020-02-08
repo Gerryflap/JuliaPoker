@@ -6,11 +6,14 @@ main:
 =#
 module JuliaPoker
     include("Cards.jl")
-    import .Cards
+    include("Poker.jl")
 
     function main()
         card1 = Cards.Card(Cards.spades, Cards.ace)
-        print(card1)
+        println(card1)
+
+        gamestate1 = Poker.start_game(4, 10000)
+        println(gamestate1)
     end
     export main
 end
