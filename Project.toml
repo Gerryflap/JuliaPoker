@@ -1,0 +1,8 @@
+name = "JuliaPoker"
+uuid = "9df040eb-e1be-45d9-a833-09a983519fd3"
+authors = ["gerben <gerry2211@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Match = "7eb4fadd-790c-5f42-8a69-bfa0b872bfbf"
