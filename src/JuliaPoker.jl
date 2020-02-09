@@ -14,6 +14,9 @@ module JuliaPoker
 
         gamestate1 = Poker.start_game(4, 10000)
         println(gamestate1)
+        gamestate2 = Poker.new_round(gamestate1, 1)
+        println(gamestate2)
+
     end
     export main
 end

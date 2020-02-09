@@ -14,6 +14,7 @@ julia>
 module Cards
     # ======================= Cards and their values ======================================
     # Card ranks
+    import Base.show
     @enum NamedRank jack=11 queen=12 king=13 ace=14
     struct NumberedRank
         value::Int
@@ -47,8 +48,6 @@ module Cards
     # List all possible cards
     all_cards = [Card(suit, rank) for suit in possible_suits for rank in possible_ranks]
 
-    export Suit, NamedRank, NumberedRank, Rank, Card, possible_ranks, possible_suits, all_cards
-
     # ======================= Printing and encoding ======================================
     function pretty_suit(a::Suit)
         if a == hearts
@@ -79,9 +78,25 @@ module Cards
     end
 
     function pretty_card(card::Card)
+        s = "\e[0;47"
+
+
         if card.hidden
-            return "??"
+            s *= ";30m??"
+        else
+            if card.suit == diamonds || card.suit == hearts
+                s *= ";31m"
+            else
+                s *= ";30m"
+            end
+
+            s *= pretty_suit(card.suit) * " " * pretty_rank(card.rank)
         end
-        return pretty_suit(card.suit) * pretty_rank(card.rank)
+        s *= "\e[0m"
+        return s
     end
+
+    Base.show(io::IO, x::Card) = write(io, pretty_card(x))
+    export Suit, NamedRank, NumberedRank, Rank, Card, possible_ranks, possible_suits, all_cards
+
 end
