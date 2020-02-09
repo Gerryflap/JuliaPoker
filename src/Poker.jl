@@ -45,6 +45,11 @@ module Poker
     Action = Union{SimpleAction, RaiseAction}
 
     # ========================== State transitions and helper functions ==========================
+
+    function get_relative_player(player::Int, relative_pos::Int, n_players::Int) :: Int
+        return 1 + (player - 1 + relative_pos + n_players)%n_players
+
+
     function gen_hands_and_river(n_players::Int)
         # Returns a tuple of cards and river variables for the gamestate struct
         total_cards_sampled = n_players * 2 + 5
@@ -55,15 +60,15 @@ module Poker
     end
 
     function hide_river(river::Array{Card})
-        riv4 = river[4]
-        riv5 = river[5]
-        river[4] = @set riv4.hidden = true
-        river[5] = @set riv5.hidden = true
+        for i in 1:length(river)
+            riv_i = river[i]
+            river[i] = @set riv_i.hidden = true
     end
 
-    function reveal_river_card(river::Array{Card}, index::Int)
-        riv_card = river[index]
-        river[index] = @set riv_card.hidden = false
+    function reveal_river_card(state::GameState, index::Int)
+        riv_card = state.river[index]
+        riv_card = @set riv_card.hidden = false
+        return @set state.river[index] = riv_card
     end
 
     function start_game(n_players::Int, starting_money::Int=1000) :: GameState
@@ -95,6 +100,7 @@ module Poker
 
 
     function play_blinds(state::GameState) :: GameState
+        # TODO: what to do when no money?! Go all-in?
         big_blind = state.big_blind
         small_blind = 1 + (state.big_blind - 2 + state.n_players)%state.n_players
         println(small_blind)
@@ -104,7 +110,17 @@ module Poker
     end
 
     function payout_and_reset_pot(state::GameState, winner::Int) :: GameState
-        state = @set state.money[winner] += sum(state.money_in_pot)
+        # If the winner went all-in, only give as much from each player as the winner put in
+        won_pot = clamp.(state.money_in_pot, 0, state.money_in_pot[winner])
+
+        # Compute what remains in the pot after that operation
+        remaining_pot = state.money_in_pot - won_pot
+
+        # Add the winner's money to his pot money
+        remaining_pot[winner] += sum(won_pot)
+
+        # Move pot money back to players and reset pot
+        state = @set state.money += remaining_pot
         state = @set state.money_in_pot = [0 for _ in 1:state.n_players]
         return state
     end
@@ -135,7 +151,97 @@ module Poker
         return state
     end
 
-    # function transition(from_state::GameState)
+
+    function transition(state::GameState, action::Action)::Tuple3{GameState, Action, Bool}
+        # Performs the action and returns a new gamestate, the actually performed action and the "done" boolean
+        current_player = state.current_player
+        current_max_bet = max(state.money_in_pot)
+
+        if action isa RaiseAction || action == check
+            # Compute what amount we're raising/checking to
+            if action == check
+                raise_to = current_max_bet
+            else
+                raise_to = current_max_bet + action.amount
+            end
+
+            # Compute how much more money we have to bet
+            money_to_bet = raise_to - state.money_in_pot[current_player]
+
+            # Check whether we have the money. If not, go all-in
+            if state.money[current_player] < money_to_bet
+                action = all_in
+            else
+                state = pay_to_pot(state, current_player, money_to_bet)
+            end
+        end
+
+        if action == all_in
+            # Put all we have in the pot
+            state = pay_to_pot(state, current_player, state.money[current_player])
+        end
+
+        if action == fold
+            state = @set state.playing_round[current_player] = false
+        end
+
+        # Next player selection/next round checks
+        no_player_found = false
+        passed_last_raise = false
+        next_player = get_relative_player(current_player, 1, state.n_players)
+        starting_nest_player = next_player
+        passed_last_raise |= next_player == state.last_raise
+        while !state.playing_round[next_player] || state.money[next_player] == 0
+            next_player = get_relative_player(next_player, 1, state.n_players)
+            passed_last_raise |= next_player == state.last_raise
+            if next_player == starting_next_player
+                no_player_found = true
+                break
+            end
+        end
+
+
+        # Check if everyone but one person has folded
+        if sum(state.playing_round) == 1
+            # Round done
+            winner = argmax(state.playing_round)
+            state = payout_and_reset_pot(state, winner)
+        end
+
+        if no_player_found
+            # TODO: end round
+        end
+
+        # Check if it is time to reveal cards in the river or count points and finish the round
+        if passed_last_raise
+            # Check whether this is the end
+            if !state.river[5].hidden
+                # TODO: end round
+            else
+                # Start at big blind again, reset last_raise and reveal the next card
+
+                # Find next suitable player
+                next_player = state.big_blind
+                while !state.playing_round[next_player] || state.money[next_player] == 0
+                    next_player = get_relative_player(next_player, 1, state.n_players)
+                    end
+                end
+
+                state = @set state.last_raise = 0
+                if state.river[3].hidden
+                    state = reveal_river_card(state, 1)
+                    state = reveal_river_card(state, 2)
+                    state = reveal_river_card(state, 3)
+                elseif state.river[4].hidden
+                    state = reveal_river_card(state, 4)
+                else
+                    state = reveal_river_card(state, 5)
+
+
+
+
+
+    end
 
 
 
